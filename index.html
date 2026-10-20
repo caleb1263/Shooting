@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ClayScore - Squad Clay Target Scorekeeper</title>
+  
+  <!-- Apple iOS PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ClayScore">
+  <meta name="theme-color" content="#090d16">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+    * {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    }
+    .safe-pt { padding-top: max(12px, env(safe-area-inset-top)); }
+    .safe-pb { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+
+    /* Tactile button animations */
+    .btn-tactile {
+      transition: transform 0.05s ease, filter 0.08s ease, box-shadow 0.08s ease;
+    }
+    .btn-tactile:active {
+      transform: scale(0.96) translateY(1.5px);
+      filter: brightness(1.25);
+    }
+
+    /* Scrollbars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#080c14] text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden antialiased">
+
+  <!-- TOP APP BAR -->
+  <header class="safe-pt bg-[#0d131f] border-b border-slate-800 px-3.5 pb-2.5 sticky top-0 z-40 shadow-xl">
+    <div class="flex items-center justify-between">
+      <!-- Brand & Round Info -->
+      <div class="flex items-center space-x-2.5">
+        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg border border-amber-400/40">
+          <i data-lucide="target" class="w-5 h-5 text-black stroke-[2.75]"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <h1 class="font-black text-base tracking-wider text-white">CLAY<span class="text-amber-400">SCORE</span></h1>
+            <span id="headerStationBadge" class="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">STN 1/25</span>
+          </div>
+          <p id="headerRoundTitle" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate max-w-[170px]">25 Stns • 100 Clays (A/B/C)</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center space-x-1.5">
+        <button id="btnOpenSquadModal" class="btn-tactile px-2.5 py-1.5 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 text-xs font-black flex items-center space-x-1">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i>
+          <span id="squadCountBadge">1</span>
+        </button>
+        <button id="btnOpenLeaderboard" class="btn-tactile px-2.5 py-1.5 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 text-xs font-black flex items-center space-x-1">
+          <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+          <span>Board</span>
+        </button>
+        <button id="btnOpenConfigModal" class="btn-tactile p-2 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold">
+          <i data-lucide="settings" class="w-4 h-4 text-slate-300"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN SCORING INTERFACE -->
+  <main class="flex-1 flex flex-col justify-between max-w-lg mx-auto w-full px-3 py-2 space-y-2.5">
+
+    <!-- ACTIVE SHOOTER HERO CAROUSEL -->
+    <section class="bg-[#101726] border border-slate-800/90 rounded-3xl p-3 shadow-xl relative overflow-hidden">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div id="activeShooterAvatar" class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-black font-black text-lg flex items-center justify-center shadow-lg uppercase border border-amber-300/40">
+            C
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">Current Up</span>
+              <span id="shooterOrderIndicator" class="text-[10px] text-slate-400 font-bold">1 of 1</span>
+            </div>
+            <h2 id="activeShooterName" class="text-xl font-black text-white tracking-wide truncate max-w-[170px]">Caleb</h2>
+          </div>
+        </div>
+
+        <!-- Active Shooter Score Pill -->
+        <div class="text-right">
+          <div class="text-2xl font-black text-emerald-400 leading-none">
+            <span id="activeShooterScore">0</span><span class="text-slate-500 text-sm font-bold">/</span><span id="activeShooterThrown" class="text-slate-300 text-sm">0</span>
+          </div>
+          <div class="flex items-center justify-end space-x-1 mt-0.5">
+            <span id="activeShooterPct" class="text-[11px] font-black text-amber-300">0.0%</span>
+            <span class="text-[10px] text-slate-500 font-bold">(<span id="activeShooterTotalClays">100</span> max)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Squad Switcher Pill Bar -->
+      <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+        <div id="squadPillsList" class="flex space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <!-- Rendered via JS -->
+        </div>
+
+        <button id="btnRotateNextShooter" class="btn-tactile ml-2 px-3 py-1.5 rounded-xl bg-amber-500 active:bg-amber-600 text-slate-950 font-black text-xs uppercase flex items-center space-x-1 shrink-0 shadow-md">
+          <span>Rotate</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 stroke-[3]"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- HORIZONTAL STATION SELECTOR TABS -->
+    <section class="space-y-1">
+      <div class="flex justify-between items-center px-1">
+        <span class="text-[10px] uppercase font-black tracking-wider text-slate-400">Stations Jump</span>
+        <span id="stationCompletionStatus" class="text-[11px] font-extrabold text-amber-400">0/4 Dead on Stand</span>
+      </div>
+      <div id="stationNavBar" class="flex space-x-1.5 overflow-x-auto no-scrollbar py-1">
+        <!-- Station buttons rendered via JS -->
+      </div>
+    </section>
+
+    <!-- 4-TARGET SEQUENCE LOGGING CARD: A (High), B (Low), C (High/Low Pair) -->
+    <section class="bg-[#101726] border border-slate-800 rounded-3xl p-3 shadow-xl flex-1 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 id="stationDisplayTitle" class="text-sm font-black text-white tracking-wide">STATION 1</h3>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 bg-slate-800 text-amber-300 rounded border border-slate-700">4 TARGETS</span>
+            </div>
+            <p class="text-[10px] text-slate-400 font-medium mt-0.5">Single A (High) • Single B (Low) • Pair C (High/Low)</p>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button id="btnCleanStand" class="btn-tactile px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-[10px] font-black uppercase flex items-center space-x-1">
+              <i data-lucide="x" class="w-3 h-3 stroke-[3]"></i>
+              <span>0/4 Lost</span>
+            </button>
+            <button id="btnBreakAllStation" class="btn-tactile px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-[10px] font-black uppercase flex items-center space-x-1">
+              <i data-lucide="zap" class="w-3 h-3"></i>
+              <span>Break All (4)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Target Presentation Groups (4 Targets total) -->
+        <div id="targetRowsContainer" class="mt-2.5 space-y-2">
+          <!-- Rendered dynamically for A (High), B (Low), C (High/Low) -->
+        </div>
+      </div>
+
+      <!-- Station Navigation Footer -->
+      <div class="pt-2 flex items-center justify-between border-t border-slate-800/80 mt-2">
+        <button id="btnPrevStation" class="btn-tactile px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs flex items-center space-x-1 border border-slate-700">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5 stroke-[2.5]"></i>
+          <span>Prev Stn</span>
+        </button>
+
+        <button id="btnResetStation" class="btn-tactile px-2.5 py-2 rounded-xl bg-slate-800/80 text-rose-400 font-bold text-xs flex items-center space-x-1 border border-slate-700">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Clear</span>
+        </button>
+
+        <button id="btnNextStation" class="btn-tactile px-3 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs flex items-center space-x-1 border border-slate-700">
+          <span>Next Stn</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 stroke-[2.5]"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- BOTTOM FAST COMMAND BAR (NEXT SHOOTER / ROTATE STAND) -->
+    <section class="safe-pb pt-0.5">
+      <button id="btnNextShooterOrStation" class="btn-tactile w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 font-black text-sm uppercase tracking-wider flex items-center justify-center space-x-2 shadow-xl shadow-amber-500/20 border border-amber-300/40">
+        <span id="btnRotationLabel">Next Shooter</span>
+        <i data-lucide="arrow-right-circle" class="w-5 h-5 stroke-[2.5]"></i>
+      </button>
+    </section>
+  </main>
+
+  <!-- MODAL: SQUAD / USER MANAGEMENT -->
+  <div id="modalSquad" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center hidden safe-pb">
+    <div class="bg-[#101726] border border-slate-700 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl max-h-[88vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h2 class="text-base font-black text-white flex items-center space-x-2">
+          <i data-lucide="users-round" class="w-5 h-5 text-amber-400"></i>
+          <span>Squad Shooters</span>
+        </h2>
+        <button id="btnCloseSquadModal" class="p-1 rounded-full bg-slate-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Add New Shooter Form -->
+      <form id="formAddShooter" class="flex space-x-2">
+        <input id="inputNewShooterName" type="text" placeholder="Shooter name (e.g. John)" maxlength="20" required class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400">
+        <button type="submit" class="btn-tactile px-4 py-2.5 bg-amber-500 active:bg-amber-600 rounded-xl text-slate-950 font-black text-xs uppercase flex items-center space-x-1 shrink-0">
+          <i data-lucide="user-plus" class="w-4 h-4 stroke-[2.5]"></i>
+          <span>Add</span>
+        </button>
+      </form>
+
+      <!-- Shooters Roster List -->
+      <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="squadManagementList">
+        <!-- Rendered via JS -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center">
+        <span>Tap any shooter to set as current up</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LIVE SQUAD LEADERBOARD & STATION BREAKDOWN -->
+  <div id="modalLeaderboard" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center hidden safe-pb">
+    <div class="bg-[#101726] border border-slate-700 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-2xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+          <h2 class="text-base font-black text-white">Squad Leaderboard</h2>
+        </div>
+        <button id="btnCloseLeaderboard" class="p-1 rounded-full bg-slate-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Leaderboard Cards / Table -->
+      <div id="leaderboardEntries" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Actions -->
+      <div class="pt-2.5 border-t border-slate-800 flex items-center justify-between">
+        <button id="btnExportCSV" class="btn-tactile px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-black text-emerald-400 flex items-center space-x-1.5">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Export CSV</span>
+        </button>
+        <button id="btnCloseLeaderboardBtn" class="btn-tactile px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs uppercase">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COURSE SETTINGS & ROUND CONFIG -->
+  <div id="modalConfig" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center hidden safe-pb">
+    <div class="bg-[#101726] border border-slate-700 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h2 class="text-base font-black text-white flex items-center space-x-2">
+          <i data-lucide="sliders" class="w-5 h-5 text-amber-400"></i>
+          <span>Course Configuration</span>
+        </h2>
+        <button id="btnCloseConfigModal" class="p-1 rounded-full bg-slate-800 text-slate-400">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-black uppercase tracking-wider text-slate-300 block mb-1.5">Total Stations (4 Birds each)</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button class="btn-tactile py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 font-bold" data-set-stns="10">10 Stns (40 Birds)</button>
+            <button class="btn-tactile py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 font-bold" data-set-stns="15">15 Stns (60 Birds)</button>
+            <button class="btn-tactile py-2 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-black" data-set-stns="25">25 Stns (100 Birds)</button>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+          <span class="font-black text-amber-400 block">Default Station Pattern:</span>
+          <p class="text-slate-300 leading-relaxed">
+            • <strong>Target 1:</strong> A (High) - Single<br>
+            • <strong>Target 2:</strong> B (Low) - Single<br>
+            • <strong>Targets 3 & 4:</strong> C (High/Low) - True Pair
+          </p>
+        </div>
+
+        <div class="pt-2">
+          <button id="btnResetEntireRound" class="btn-tactile w-full py-3 rounded-xl bg-rose-950/80 border border-rose-700 text-rose-200 font-black uppercase text-xs flex items-center justify-center space-x-2">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>Reset / Clear Current Round</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-slate-700 text-white px-4 py-2 rounded-full text-xs font-bold shadow-2xl transition-opacity duration-300 opacity-0 pointer-events-none flex items-center space-x-2">
+    <span id="toastText">Action saved</span>
+  </div>
+
+  <!-- MAIN SCRIPT -->
+  <script>
+    // --- STATE STRUCTURE ---
+    const STORAGE_KEY = 'clayscore_squad_state_v3';
+
+    // 4 Targets with exact A (High), B (Low), and C (High/Low) Pair layout
+    const TARGET_CONFIG = [
+      { id: 0, group: 'A', name: 'Target 1: A (High)', type: 'Single', house: 'High', pairGroup: null },
+      { id: 1, group: 'B', name: 'Target 2: B (Low)', type: 'Single', house: 'Low', pairGroup: null },
+      { id: 2, group: 'C', name: 'Target 3: C (High)', type: 'Pair Bird 1', house: 'High', pairGroup: 'Pair C (High/Low)' },
+      { id: 3, group: 'C', name: 'Target 4: C (Low)', type: 'Pair Bird 2', house: 'Low', pairGroup: 'Pair C (High/Low)' }
+    ];
+
+    let state = {
+      roundName: '100 Clays (25 Stations)',
+      totalStations: 25, // default 25 stations (100 clays)
+      currentStationIndex: 0, // 0 to 24
+      activeShooterIndex: 0,
+      shooters: [
+        {
+          id: 's_caleb',
+          name: 'Caleb',
+          // 25 stations array; each station contains 4 targets [t1, t2, t3, t4] (null | true | false)
+          scores: Array.from({ length: 25 }, () => [null, null, null, null])
+        }
+      ]
+    };
+
+    // --- DOM REFERENCES ---
+    const headerStationBadge = document.getElementById('headerStationBadge');
+    const headerRoundTitle = document.getElementById('headerRoundTitle');
+    const squadCountBadge = document.getElementById('squadCountBadge');
+    const activeShooterAvatar = document.getElementById('activeShooterAvatar');
+    const activeShooterName = document.getElementById('activeShooterName');
+    const shooterOrderIndicator = document.getElementById('shooterOrderIndicator');
+    const activeShooterScore = document.getElementById('activeShooterScore');
+    const activeShooterThrown = document.getElementById('activeShooterThrown');
+    const activeShooterPct = document.getElementById('activeShooterPct');
+    const activeShooterTotalClays = document.getElementById('activeShooterTotalClays');
+    const squadPillsList = document.getElementById('squadPillsList');
+    const stationNavBar = document.getElementById('stationNavBar');
+    const stationCompletionStatus = document.getElementById('stationCompletionStatus');
+    const stationDisplayTitle = document.getElementById('stationDisplayTitle');
+    const targetRowsContainer = document.getElementById('targetRowsContainer');
+    const btnRotationLabel = document.getElementById('btnRotationLabel');
+
+    // Modals
+    const modalSquad = document.getElementById('modalSquad');
+    const btnOpenSquadModal = document.getElementById('btnOpenSquadModal');
+    const btnCloseSquadModal = document.getElementById('btnCloseSquadModal');
+    const formAddShooter = document.getElementById('formAddShooter');
+    const inputNewShooterName = document.getElementById('inputNewShooterName');
+    const squadManagementList = document.getElementById('squadManagementList');
+
+    const modalLeaderboard = document.getElementById('modalLeaderboard');
+    const btnOpenLeaderboard = document.getElementById('btnOpenLeaderboard');
+    const btnCloseLeaderboard = document.getElementById('btnCloseLeaderboard');
+    const btnCloseLeaderboardBtn = document.getElementById('btnCloseLeaderboardBtn');
+    const leaderboardEntries = document.getElementById('leaderboardEntries');
+    const btnExportCSV = document.getElementById('btnExportCSV');
+
+    const modalConfig = document.getElementById('modalConfig');
+    const btnOpenConfigModal = document.getElementById('btnOpenConfigModal');
+    const btnCloseConfigModal = document.getElementById('btnCloseConfigModal');
+    const btnResetEntireRound = document.getElementById('btnResetEntireRound');
+
+    // Controls
+    const btnRotateNextShooter = document.getElementById('btnRotateNextShooter');
+    const btnPrevStation = document.getElementById('btnPrevStation');
+    const btnNextStation = document.getElementById('btnNextStation');
+    const btnResetStation = document.getElementById('btnResetStation');
+    const btnBreakAllStation = document.getElementById('btnBreakAllStation');
+    const btnCleanStand = document.getElementById('btnCleanStand');
+    const btnNextShooterOrStation = document.getElementById('btnNextShooterOrStation');
+
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toastText');
+
+    // --- HAPTICS & TOAST ---
+    function triggerHaptic(type = 'light') {
+      if ('vibrate' in navigator) {
+        try {
+          if (type === 'hit') navigator.vibrate(25);
+          else if (type === 'miss') navigator.vibrate(40);
+          else if (type === 'breakAll') navigator.vibrate([20, 30, 20]);
+          else navigator.vibrate(20);
+        } catch(e) {}
+      }
+    }
+
+    function showToast(msg) {
+      toastText.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 1800);
+    }
+
+    // --- LOCAL STORAGE ---
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Storage save failed', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.shooters) && parsed.shooters.length > 0) {
+            state = parsed;
+            // Ensure scores array matches current totalStations length
+            state.shooters.forEach(s => {
+              if (s.scores.length < state.totalStations) {
+                while (s.scores.length < state.totalStations) {
+                  s.scores.push([null, null, null, null]);
+                }
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Storage load failed', e);
+      }
+    }
+
+    // --- CALCULATIONS ---
+    function getShooterStats(shooter) {
+      let hits = 0;
+      let thrown = 0;
+      const maxPossible = state.totalStations * 4;
+
+      shooter.scores.forEach(st => {
+        if (st) {
+          st.forEach(t => {
+            if (t !== null) {
+              thrown++;
+              if (t === true) hits++;
+            }
+          });
+        }
+      });
+
+      const pct = thrown > 0 ? ((hits / thrown) * 100).toFixed(1) : '0.0';
+      return { hits, thrown, maxPossible, pct };
+    }
+
+    // --- TARGET HIT / MISS TOGGLE ---
+    function setTargetScore(targetIndex, isHit) {
+      const shooter = state.shooters[state.activeShooterIndex];
+      if (!shooter) return;
+
+      const currentVal = shooter.scores[state.currentStationIndex][targetIndex];
+      if (currentVal === isHit) {
+        shooter.scores[state.currentStationIndex][targetIndex] = null; // un-toggle
+      } else {
+        shooter.scores[state.currentStationIndex][targetIndex] = isHit;
+      }
+
+      triggerHaptic(isHit ? 'hit' : 'miss');
+      saveState();
+      renderApp();
+    }
+
+    // --- QUICK ACTION: BREAK ALL (4 DEAD) ---
+    function breakAllStation() {
+      const shooter = state.shooters[state.activeShooterIndex];
+      if (!shooter) return;
+      shooter.scores[state.currentStationIndex] = [true, true, true, true];
+      triggerHaptic('breakAll');
+      saveState();
+      renderApp();
+      showToast('Break All: 4 Dead!');
+    }
+
+    // --- QUICK ACTION: CLEAN STAND (0/4 LOST) ---
+    function missAllStation() {
+      const shooter = state.shooters[state.activeShooterIndex];
+      if (!shooter) return;
+      shooter.scores[state.currentStationIndex] = [false, false, false, false];
+      triggerHaptic('miss');
+      saveState();
+      renderApp();
+      showToast('Stand Recorded: 0/4 Lost');
+    }
+
+    // --- RESET STAND ---
+    function clearStation() {
+      const shooter = state.shooters[state.activeShooterIndex];
+      if (!shooter) return;
+      shooter.scores[state.currentStationIndex] = [null, null, null, null];
+      triggerHaptic('light');
+      saveState();
+      renderApp();
+      showToast('Stand Cleared');
+    }
+
+    // --- ROTATION: NEXT SHOOTER OR ADVANCE STATION ---
+    function rotateShooterOrAdvance() {
+      triggerHaptic('light');
+      if (state.shooters.length > 1) {
+        // If other shooters haven't shot this station yet
+        if (state.activeShooterIndex < state.shooters.length - 1) {
+          state.activeShooterIndex++;
+          saveState();
+          renderApp();
+          showToast(`Up: ${state.shooters[state.activeShooterIndex].name}`);
+          return;
+        } else {
+          // All shooters in squad completed this station; advance to next station and rotate back to first shooter
+          state.activeShooterIndex = 0;
+          if (state.currentStationIndex < state.totalStations - 1) {
+            state.currentStationIndex++;
+            showToast(`Advancing squad to Station ${state.currentStationIndex + 1}`);
+          } else {
+            showToast('Squad completed the round!');
+          }
+          saveState();
+          renderApp();
+          return;
+        }
+      } else {
+        // Solo shooter: Advance directly to next station
+        if (state.currentStationIndex < state.totalStations - 1) {
+          state.currentStationIndex++;
+          saveState();
+          renderApp();
+          showToast(`Station ${state.currentStationIndex + 1}`);
+        } else {
+          showToast('Completed round!');
+        }
+      }
+    }
+
+    // --- RENDER APP ---
+    function renderApp() {
+      const activeShooter = state.shooters[state.activeShooterIndex] || state.shooters[0];
+      const stats = getShooterStats(activeShooter);
+
+      // Header Updates
+      headerStationBadge.innerText = `STN ${state.currentStationIndex + 1}/${state.totalStations}`;
+      headerRoundTitle.innerText = `${state.totalStations} Stns • ${state.totalStations * 4} Clays (A/B/C)`;
+      squadCountBadge.innerText = state.shooters.length;
+
+      // Active Shooter Info
+      activeShooterAvatar.innerText = activeShooter.name.charAt(0).toUpperCase();
+      activeShooterName.innerText = activeShooter.name;
+      shooterOrderIndicator.innerText = `${state.activeShooterIndex + 1} of ${state.shooters.length}`;
+      activeShooterScore.innerText = stats.hits;
+      activeShooterThrown.innerText = stats.thrown;
+      activeShooterTotalClays.innerText = stats.maxPossible;
+      activeShooterPct.innerText = `${stats.pct}%`;
+
+      // Sub-renders
+      renderSquadPills();
+      renderStationNavBar();
+
+      // Station Card Header
+      stationDisplayTitle.innerText = `STATION ${state.currentStationIndex + 1}`;
+      const stationScores = activeShooter.scores[state.currentStationIndex];
+      const deadCount = stationScores.filter(t => t === true).length;
+      const shotCount = stationScores.filter(t => t !== null).length;
+      stationCompletionStatus.innerText = `${deadCount}/4 Dead (${shotCount}/4 Shot)`;
+
+      // Render Target Presentation Layout: A (High), B (Low), C (High/Low Pair)
+      renderTargetPresentations(activeShooter);
+
+      // Nav buttons state
+      btnPrevStation.disabled = state.currentStationIndex === 0;
+      btnPrevStation.style.opacity = state.currentStationIndex === 0 ? '0.4' : '1.0';
+      btnNextStation.disabled = state.currentStationIndex === state.totalStations - 1;
+      btnNextStation.style.opacity = (state.currentStationIndex === state.totalStations - 1) ? '0.4' : '1.0';
+
+      // Next Shooter / Stand label
+      if (state.shooters.length > 1 && state.activeShooterIndex < state.shooters.length - 1) {
+        btnRotationLabel.innerText = `Next: ${state.shooters[state.activeShooterIndex + 1].name}`;
+      } else if (state.currentStationIndex < state.totalStations - 1) {
+        btnRotationLabel.innerText = `Next Station (${state.currentStationIndex + 2})`;
+      } else {
+        btnRotationLabel.innerText = `Complete Round`;
+      }
+
+      lucide.createIcons();
+    }
+
+    // --- RENDER SQUAD TABS ---
+    function renderSquadPills() {
+      squadPillsList.innerHTML = '';
+      state.shooters.forEach((shooter, idx) => {
+        const isCurrent = idx === state.activeShooterIndex;
+        const sStats = getShooterStats(shooter);
+
+        const btn = document.createElement('button');
+        btn.className = `btn-tactile px-3 py-1.5 rounded-xl text-xs font-black flex items-center space-x-1.5 transition-all shrink-0 ${
+          isCurrent
+            ? 'bg-amber-500 text-slate-950 shadow-lg ring-2 ring-amber-300'
+            : 'bg-slate-800/90 text-slate-300 border border-slate-700'
+        }`;
+        btn.innerHTML = `
+          <span>${shooter.name}</span>
+          <span class="text-[10px] ${isCurrent ? 'text-black font-black' : 'text-emerald-400 font-extrabold'}">${sStats.hits}/${sStats.thrown}</span>
+        `;
+        btn.addEventListener('click', () => {
+          state.activeShooterIndex = idx;
+          triggerHaptic('light');
+          saveState();
+          renderApp();
+        });
+        squadPillsList.appendChild(btn);
+      });
+    }
+
+    // --- RENDER STATION NAVIGATION JUMP BAR ---
+    function renderStationNavBar() {
+      stationNavBar.innerHTML = '';
+      const activeShooter = state.shooters[state.activeShooterIndex];
+
+      for (let i = 0; i < state.totalStations; i++) {
+        const isSelected = i === state.currentStationIndex;
+        const stationScores = activeShooter.scores[i] || [null, null, null, null];
+        const deadCount = stationScores.filter(t => t === true).length;
+        const shotCount = stationScores.filter(t => t !== null).length;
+        const isFinished = shotCount === 4;
+
+        const tab = document.createElement('button');
+        tab.className = `btn-tactile px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center shrink-0 min-w-[50px] transition-all ${
+          isSelected 
+            ? 'bg-amber-500 text-slate-950 font-black shadow-lg border-2 border-amber-300 scale-105'
+            : isFinished
+              ? 'bg-[#151d30] text-slate-200 border border-slate-700'
+              : 'bg-[#0c101a] text-slate-400 border border-slate-800/90'
+        }`;
+
+        tab.innerHTML = `
+          <span class="text-[9px] font-black uppercase tracking-wider">Stn ${i + 1}</span>
+          <span class="text-[10px] ${isSelected ? 'text-slate-950 font-black' : isFinished ? 'text-emerald-400 font-bold' : 'text-slate-500'}">${deadCount}/4</span>
+        `;
+
+        tab.addEventListener('click', () => {
+          state.currentStationIndex = i;
+          triggerHaptic('light');
+          saveState();
+          renderApp();
+        });
+
+        stationNavBar.appendChild(tab);
+      }
+
+      const activeElem = stationNavBar.children[state.currentStationIndex];
+      if (activeElem) {
+        activeElem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+
+    // --- RENDER 3 PRESENTATION GROUPS: A (High), B (Low), C (High/Low) ---
+    function renderTargetPresentations(activeShooter) {
+      targetRowsContainer.innerHTML = '';
+      const stationScores = activeShooter.scores[state.currentStationIndex];
+
+      // Helper to generate a single target control button row
+      const createTargetControl = (idx, label, subtext, badgeText, badgeColor) => {
+        const val = stationScores[idx];
+        const isHit = val === true;
+        const isMiss = val === false;
+
+        const div = document.createElement('div');
+        div.className = `p-2 rounded-2xl border transition-all flex items-center justify-between ${
+          isHit 
+            ? 'bg-emerald-950/40 border-emerald-500/60 shadow-sm' 
+            : isMiss 
+              ? 'bg-rose-950/40 border-rose-500/60 shadow-sm' 
+              : 'bg-[#090e18] border-slate-800'
+        }`;
+
+        div.innerHTML = `
+          <div class="flex items-center space-x-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+              isHit 
+                ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/30' 
+                : isMiss 
+                  ? 'bg-red-600 text-white font-black shadow-md shadow-red-600/30' 
+                  : 'bg-slate-800 text-amber-400 border border-slate-700'
+            }">
+              ${isHit ? '✓' : isMiss ? '✕' : (idx + 1)}
+            </div>
+            <div class="truncate">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-xs font-black text-white truncate">${label}</span>
+                <span class="text-[9px] uppercase font-black px-1.5 py-0.2 rounded ${badgeColor}">${badgeText}</span>
+              </div>
+              <p class="text-[10px] font-bold ${isHit ? 'text-emerald-400' : isMiss ? 'text-red-400' : 'text-slate-400'}">
+                ${isHit ? 'DEAD (HIT)' : isMiss ? 'LOST (MISS)' : subtext}
+              </p>
+            </div>
+          </div>
+
+          <!-- Tactile Buttons -->
+          <div class="flex items-center space-x-2 shrink-0">
+            <!-- LOST (MISS) -->
+            <button class="btn-tactile px-3.5 py-2 rounded-xl font-black text-xs uppercase flex items-center space-x-1 ${
+              isMiss 
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/40 border border-red-400' 
+                : 'bg-slate-800/90 text-rose-300 hover:bg-rose-900/40 border border-slate-700'
+            }" data-action="miss" data-index="${idx}">
+              <i data-lucide="x" class="w-3.5 h-3.5 stroke-[3]"></i>
+              <span>Lost</span>
+            </button>
+
+            <!-- DEAD (HIT) -->
+            <button class="btn-tactile px-3.5 py-2 rounded-xl font-black text-xs uppercase flex items-center space-x-1 ${
+              isHit 
+                ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/40 border border-emerald-300' 
+                : 'bg-slate-800/90 text-emerald-300 hover:bg-emerald-900/40 border border-slate-700'
+            }" data-action="hit" data-index="${idx}">
+              <i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>
+              <span>Dead</span>
+            </button>
+          </div>
+        `;
+
+        div.querySelector('[data-action="hit"]').addEventListener('click', () => setTargetScore(idx, true));
+        div.querySelector('[data-action="miss"]').addEventListener('click', () => setTargetScore(idx, false));
+
+        return div;
+      };
+
+      // 1. Single A (High)
+      targetRowsContainer.appendChild(
+        createTargetControl(0, 'Target 1: A (High)', 'High House Single', 'A Single', 'bg-sky-500/20 text-sky-300 border border-sky-500/30')
+      );
+
+      // 2. Single B (Low)
+      targetRowsContainer.appendChild(
+        createTargetControl(1, 'Target 2: B (Low)', 'Low House Single', 'B Single', 'bg-amber-500/20 text-amber-300 border border-amber-500/30')
+      );
+
+      // 3. Presentation C (High/Low Pair) Card Container
+      const pairContainer = document.createElement('div');
+      pairContainer.className = 'p-2.5 rounded-2xl bg-[#0b101c] border border-amber-500/40 space-y-2';
+
+      const pairHeader = document.createElement('div');
+      pairHeader.className = 'flex items-center justify-between border-b border-slate-800/80 pb-1.5 px-0.5';
+      pairHeader.innerHTML = `
+        <div class="flex items-center space-x-1.5">
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span class="text-xs font-black text-amber-300 uppercase tracking-wide">Presentation C (High/Low)</span>
+        </div>
+        <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">True Pair (2 Birds)</span>
+      `;
+      pairContainer.appendChild(pairHeader);
+
+      // Pair Bird 1: Target 3 C (High)
+      pairContainer.appendChild(
+        createTargetControl(2, 'Target 3: C (High)', 'Pair - High Bird', 'C - High', 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30')
+      );
+
+      // Pair Bird 2: Target 4 C (Low)
+      pairContainer.appendChild(
+        createTargetControl(3, 'Target 4: C (Low)', 'Pair - Low Bird', 'C - Low', 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30')
+      );
+
+      targetRowsContainer.appendChild(pairContainer);
+    }
+
+    // --- SQUAD MANAGEMENT MODAL ---
+    function renderSquadManagement() {
+      squadManagementList.innerHTML = '';
+
+      state.shooters.forEach((shooter, idx) => {
+        const sStats = getShooterStats(shooter);
+        const isActive = idx === state.activeShooterIndex;
+
+        const item = document.createElement('div');
+        item.className = `p-3 rounded-2xl border flex items-center justify-between transition-all ${
+          isActive 
+            ? 'bg-amber-500/15 border-amber-500/60' 
+            : 'bg-slate-900/90 border-slate-800'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-3 cursor-pointer flex-1" data-select="${idx}">
+            <div class="w-9 h-9 rounded-xl ${isActive ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-800 text-slate-300 font-bold'} flex items-center justify-center text-sm uppercase">
+              ${shooter.name.charAt(0)}
+            </div>
+            <div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-sm font-black text-white">${shooter.name}</span>
+                ${isActive ? '<span class="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 rounded">UP</span>' : ''}
+              </div>
+              <p class="text-[10px] text-slate-400 font-medium">${sStats.hits}/${sStats.thrown} Targets Shot • <span class="text-amber-400 font-bold">${sStats.pct}%</span></p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-1">
+            ${state.shooters.length > 1 ? `
+              <button class="btn-tactile p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800" data-remove="${idx}">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            ` : ''}
+          </div>
+        `;
+
+        item.querySelector('[data-select]').addEventListener('click', () => {
+          state.activeShooterIndex = idx;
+          saveState();
+          renderApp();
+          renderSquadManagement();
+          modalSquad.classList.add('hidden');
+        });
+
+        const removeBtn = item.querySelector('[data-remove]');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeShooter(idx);
+          });
+        }
+
+        squadManagementList.appendChild(item);
+      });
+
+      lucide.createIcons();
+    }
+
+    function addShooter(name) {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+
+      const newShooter = {
+        id: 's_' + Date.now(),
+        name: trimmed,
+        scores: Array.from({ length: state.totalStations }, () => [null, null, null, null])
+      };
+
+      state.shooters.push(newShooter);
+      saveState();
+      renderApp();
+      renderSquadManagement();
+      showToast(`Added ${trimmed} to Squad`);
+    }
+
+    function removeShooter(index) {
+      if (state.shooters.length <= 1) {
+        showToast('Squad requires at least 1 shooter');
+        return;
+      }
+      const removed = state.shooters.splice(index, 1);
+      if (state.activeShooterIndex >= state.shooters.length) {
+        state.activeShooterIndex = 0;
+      }
+      saveState();
+      renderApp();
+      renderSquadManagement();
+      showToast(`Removed ${removed[0].name}`);
+    }
+
+    // --- LEADERBOARD & BREAKDOWN MODAL ---
+    function renderLeaderboard() {
+      leaderboardEntries.innerHTML = '';
+
+      const ranked = [...state.shooters].map((s, originalIdx) => {
+        return { ...s, stats: getShooterStats(s), originalIdx };
+      }).sort((a, b) => b.stats.hits - a.stats.hits || b.stats.pct - a.stats.pct);
+
+      ranked.forEach((item, rank) => {
+        const isLeader = rank === 0 && item.stats.thrown > 0;
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-2xl border space-y-2.5 ${
+          isLeader 
+            ? 'bg-amber-500/10 border-amber-500/50 shadow-lg' 
+            : 'bg-slate-900 border-slate-800'
+        }`;
+
+        // Top Summary Row
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                rank === 0 ? 'bg-amber-400 text-slate-950 font-black' : rank === 1 ? 'bg-slate-300 text-slate-900' : rank === 2 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-400'
+              }">
+                #${rank + 1}
+              </div>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-sm font-black text-white">${item.name}</span>
+                  ${isLeader ? '<i data-lucide="crown" class="w-3.5 h-3.5 text-amber-400 fill-amber-400"></i>' : ''}
+                </div>
+                <p class="text-[10px] text-slate-400 font-medium">${item.stats.thrown}/${item.stats.maxPossible} Birds Logged</p>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <div class="text-xl font-black text-emerald-400 leading-none">
+                ${item.stats.hits} <span class="text-xs text-slate-500 font-bold">/ ${item.stats.thrown}</span>
+              </div>
+              <p class="text-xs font-black text-amber-400 mt-0.5">${item.stats.pct}%</p>
+            </div>
+          </div>
+
+          <!-- Station Mini Score Grid -->
+          <div class="pt-2 border-t border-slate-800/80">
+            <div class="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Stand Breakdown (A/B/C)</div>
+            <div class="grid grid-cols-5 sm:grid-cols-8 gap-1">
+              ${item.scores.map((stn, sIdx) => {
+                const hits = stn.filter(t => t === true).length;
+                const shot = stn.filter(t => t !== null).length;
+                const finished = shot === 4;
+                return `
+                  <div class="px-1 py-1 rounded bg-[#0b101c] border border-slate-800 text-center">
+                    <span class="text-[8px] text-slate-500 block leading-none font-bold">S${sIdx + 1}</span>
+                    <span class="text-[10px] font-black ${finished ? (hits === 4 ? 'text-amber-400' : hits > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}">${hits}/4</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+
+        leaderboardEntries.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // --- CSV EXPORT ---
+    function exportSummaryCSV() {
+      let csv = 'Shooter,Total Dead,Total Shot,Possible Clays,Accuracy %,';
+      for (let i = 1; i <= state.totalStations; i++) {
+        csv += `Stn ${i} (A/B/C/C),`;
+      }
+      csv += '\n';
+
+      state.shooters.forEach(s => {
+        const stats = getShooterStats(s);
+        csv += `"${s.name}",${stats.hits},${stats.thrown},${stats.maxPossible},${stats.pct}%,`;
+        s.scores.forEach(stn => {
+          const summary = stn.map(t => t === true ? '1' : t === false ? '0' : '-').join('');
+          csv += `"${summary}",`;
+        });
+        csv += '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ClayScore_100Birds_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Exported CSV Scorecard');
+    }
+
+    // --- CONFIGURATION & RESET ---
+    function setCourseStations(count) {
+      state.totalStations = count;
+      state.roundName = `${count * 4} Clays (${count} Stations)`;
+      if (state.currentStationIndex >= count) {
+        state.currentStationIndex = count - 1;
+      }
+      state.shooters.forEach(s => {
+        if (s.scores.length < count) {
+          while (s.scores.length < count) {
+            s.scores.push([null, null, null, null]);
+          }
+        }
+      });
+      saveState();
+      renderApp();
+      modalConfig.classList.add('hidden');
+      showToast(`Set course to ${count} Stations (${count * 4} Clays)`);
+    }
+
+    function resetEntireRound() {
+      state.currentStationIndex = 0;
+      state.activeShooterIndex = 0;
+      state.shooters.forEach(s => {
+        s.scores = Array.from({ length: state.totalStations }, () => [null, null, null, null]);
+      });
+      saveState();
+      renderApp();
+      modalConfig.classList.add('hidden');
+      showToast('Round completely cleared');
+    }
+
+    // --- LISTENERS ---
+    function setupEventListeners() {
+      // Prev / Next station buttons
+      btnPrevStation.addEventListener('click', () => {
+        if (state.currentStationIndex > 0) {
+          state.currentStationIndex--;
+          triggerHaptic('light');
+          saveState();
+          renderApp();
+        }
+      });
+
+      btnNextStation.addEventListener('click', () => {
+        if (state.currentStationIndex < state.totalStations - 1) {
+          state.currentStationIndex++;
+          triggerHaptic('light');
+          saveState();
+          renderApp();
+        }
+      });
+
+      // Quick stand actions
+      btnBreakAllStation.addEventListener('click', breakAllStation);
+      btnCleanStand.addEventListener('click', missAllStation);
+      btnResetStation.addEventListener('click', clearStation);
+
+      // Rotate / Advance
+      btnRotateNextShooter.addEventListener('click', rotateShooterOrAdvance);
+      btnNextShooterOrStation.addEventListener('click', rotateShooterOrAdvance);
+
+      // Squad Modal
+      btnOpenSquadModal.addEventListener('click', () => {
+        modalSquad.classList.remove('hidden');
+        renderSquadManagement();
+      });
+      btnCloseSquadModal.addEventListener('click', () => modalSquad.classList.add('hidden'));
+
+      formAddShooter.addEventListener('submit', (e) => {
+        e.preventDefault();
+        addShooter(inputNewShooterName.value);
+        inputNewShooterName.value = '';
+      });
+
+      // Leaderboard Modal
+      btnOpenLeaderboard.addEventListener('click', () => {
+        modalLeaderboard.classList.remove('hidden');
+        renderLeaderboard();
+      });
+      btnCloseLeaderboard.addEventListener('click', () => modalLeaderboard.classList.add('hidden'));
+      btnCloseLeaderboardBtn.addEventListener('click', () => modalLeaderboard.classList.add('hidden'));
+      btnExportCSV.addEventListener('click', exportSummaryCSV);
+
+      // Config Modal
+      btnOpenConfigModal.addEventListener('click', () => modalConfig.classList.remove('hidden'));
+      btnCloseConfigModal.addEventListener('click', () => modalConfig.classList.add('hidden'));
+      btnResetEntireRound.addEventListener('click', resetEntireRound);
+
+      document.querySelectorAll('[data-set-stns]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const count = parseInt(e.currentTarget.getAttribute('data-set-stns'), 10);
+          setCourseStations(count);
+        });
+      });
+
+      // Keyboard hotkeys for physical clicker accessories (1, 2, 3, 4, Space)
+      window.addEventListener('keydown', (e) => {
+        if (['1', '2', '3', '4'].includes(e.key)) {
+          const idx = parseInt(e.key) - 1;
+          const current = state.shooters[state.activeShooterIndex].scores[state.currentStationIndex][idx];
+          setTargetScore(idx, current !== true);
+        } else if (e.key === ' ' || e.key === 'Enter') {
+          rotateShooterOrAdvance();
+        }
+      });
+    }
+
+    // --- INITIALIZE ---
+    window.addEventListener('load', () => {
+      loadState();
+      setupEventListeners();
+      renderApp();
+    });
+  </script>
+</body>
+</html>
